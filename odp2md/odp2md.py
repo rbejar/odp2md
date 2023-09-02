@@ -170,19 +170,66 @@ class Parser:
                     self.handleTextNode(n)
         _handleNodeRec(node, -1)
 
+    # def handleTitle(self, node):
+    #     def _handleTitleRec(node):
+    #         t = self.getTextFromNode(node)
+    #         if t is not None:
+    #             self.currentSlide.title += t
+    #         else:
+    #             self.currentSlide.title += ""  # There is a title and so probably a slide, but it is empty
+    #         for n in node.childNodes:
+    #             _handleTitleRec(n)
+    #         self.currentSlide.title += '\n'
+    #
+    #     self.debugNode(node)
+    #     _handleTitleRec(node)
+
+
     def handleTitle(self, node):
         def _handleTitleRec(node):
-            t = self.getTextFromNode(node)
-            if t is not None:
+            if node.nodeName == 'text:span':
+                t = self.getTextFromNode(node.childNodes[0])
+                if self.hasAttributeWithValue(node, 'text:style-name', 'T1'):
+                    t = '*' + t + '*'
+                elif self.hasAttributeWithValue(node, 'text:style-name', 'T2'):
+                    t = '**' + t + '**'
+                elif self.hasAttributeWithValue(node, 'text:style-name', 'T3'):
+                    t = '<u>' + t + '</u>'
+                else:  # ignore other styles
+                    pass
                 self.currentSlide.title += t
             else:
-                self.currentSlide.title += ""  # There is a title and so probably a slide, but it is empty
-            for n in node.childNodes:
-                _handleTitleRec(n)
-            self.currentSlide.title += '\n'
+                t = self.getTextFromNode(node)
+                if t is None:
+                    for n in node.childNodes:
+                        _handleTitleRec(n)
+                else:
+                    self.currentSlide.title += t
 
-        self.debugNode(node)
         _handleTitleRec(node)
+
+        #
+        #
+        # for n in node.childNodes:
+        #     if n.nodeName == 'draw:text-box':
+        #         for nn in n.childNodes:
+        #             if nn.nodeName == 'text:p':
+        #                 for nnn in nn.childNodes:
+        #                     if nnn.nodeName == 'text:span':
+        #                         t = self.getTextFromNode(nnn.childNodes[0])
+        #                         if self.hasAttributeWithValue(nnn, 'text:style-name', 'T1'):
+        #                             t = '*' + t + '*'
+        #                         elif self.hasAttributeWithValue(nnn, 'text:style-name', 'T2'):
+        #                             t = '**' + t + '**'
+        #                         elif self.hasAttributeWithValue(nnn, 'text:style-name', 'T3'):
+        #                             t = '<u>' + t + '</u>'
+        #                         else:  # ignore other styles
+        #                             pass
+        #                     else:
+        #                         t = self.getTextFromNode(nnn)
+        #                     self.currentSlide.title += t
+        # self.currentSlide.title += '\n'
+
 
     def handleOutline(self, node):
         self.debugNode(node)
