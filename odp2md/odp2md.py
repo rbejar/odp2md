@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
-"""
+'''
+
+2023-09-02 Modified by Rubén Béjar
+    - Added support for bold, italic and underline text styles
 
 odp2md 2021.5.0
 
@@ -27,7 +30,7 @@ Usage:
 
 $> python odp2md --input <myslide.odp>
 
- """
+ '''
 
 import os
 import zipfile
@@ -41,14 +44,14 @@ import xml.dom.minidom as dom
 class Slide:
     def __init__(self):
         self.title = ''
-        self.text = ""
-        self.notes = ""
+        self.text = ''
+        self.notes = ''
         self.media = []
 
     def generateMarkdown(self,blockToHTML=True):
         # fix identation
         self.text = textwrap.dedent(self.text)
-        out = "## {0}\n\n{1}\n".format(self.title,self.text)
+        out = '## {0}\n\n{1}\n'.format(self.title,self.text)
         for m,v in self.media:
 
             # maybe let everything else fail?
@@ -56,9 +59,9 @@ class Slide:
 
             if blockToHTML and isVideo:
                 # since LaTeX extensions for video are deprecated 
-                out += "`![]({0})`{{=html}}\n".format(v)
+                out += '`![]({0})`{{=html}}\n'.format(v)
             else:
-                out += "![]({0})\n".format(v)
+                out += '![]({0})\n'.format(v)
         return out
     
     # override string representation
@@ -79,10 +82,11 @@ class Parser:
     def __init__(self):
         self.slides = []
         self.currentSlide = None
-        self.currentText = ""
+        self.currentText = ''
         self.currentDepth = 0
         self.currentScope = Scope.NONE
         self.mediaDirectory = 'media'
+        self.debug = False
 
     def getTextFromNode(self,node):
         if node.nodeType == node.TEXT_NODE and len(str(node.data)) > 0:
@@ -98,25 +102,16 @@ class Parser:
         return False
 
     def debugNode(self,node):
-        # print('node ', node.tagName)
-        pass
-
-    def handlePage(self,node):
-        # set new current slide
-        self.currentSlide = Slide()
-        self.currentSlide.name = node.attributes['draw:name']
-        # parse
-        self.handleNode(node)
-        # store
-        self.slides.append(self.currentSlide)
-
+        if self.debug:
+            print(node.nodeName, node.nodeType, node.attributes[
+                'presentation:class'].value if node.attributes is not None and 'presentation:class' in node.attributes else '')
 
     def slugify(self,value, allow_unicode=False):
-        """
+        '''
         Convert to ASCII if 'allow_unicode' is False. Convert spaces to hyphens.
         Remove characters that aren't alphanumerics, underscores, or hyphens.
         Convert to lowercase. Also strip leading and trailing whitespace.
-        """
+        '''
         value = str(value)
         if allow_unicode:
             value = unicodedata.normalize('NFKC', value)
@@ -125,60 +120,100 @@ class Parser:
         value = re.sub(r'[^\w\s-]', '', value.lower()).strip()
         return re.sub(r'[-\s]+', '-', value)
 
-    def handleNode(self,node):
+    def handleImage(self, node):
+        self.debugNode(node)
 
-        if self.hasAttributeWithValue(node,"presentation:class","title"):
-            self.currentScope = Scope.TITLE
-        elif self.hasAttributeWithValue(node,"presentation:class","outline"):
-            self.currentScope = Scope.OUTLINE
+        for k, v in node.attributes.items():
+            if k == 'xlink:href':
+                # get the extension
+                name, ext = os.path.splitext(v)
+                ext = ext.lower()
+                # now we create a new slug name for conversion
+                slug = self.slugify(self.currentSlide.title)
+                if len(slug) < 1:
+                    slug = 'slide-' + str(len(self.slides)) + '-image'
+                slug += '-' + str(len(self.currentSlide.media))
+                slug = (slug[:128]) if len(slug) > 128 else slug  # truncate
+                self.currentSlide.media.append((v, os.path.join(self.mediaDirectory, slug + ext)))
 
-        if node.nodeName in ['draw:image', 'draw:plugin']:
-            for k,v in node.attributes.items():
-                if k == 'xlink:href':
-                    # get the extension
-                    name,ext = os.path.splitext(v)
-                    ext = ext.lower()
-                    # now we create a new slug name for conversion
-                    slug = self.slugify(self.currentSlide.title)
-                    if len(slug) < 1:
-                        slug = "slide-" + str(len(self.slides)) + "-image"
-                    slug += "-" + str(len(self.currentSlide.media))
-                    slug = (slug[:128]) if len(slug) > 128 else slug # truncate
-                    
-                    self.currentSlide.media.append((v,os.path.join(self.mediaDirectory,slug+ext)))
 
-            
-        t = self.getTextFromNode(node)
+    def handleTextNode(self, node):
+        for n in node.childNodes:
+            if n.nodeName == 'text:span':
+                t = self.getTextFromNode(n.childNodes[0])
+                if self.hasAttributeWithValue(n, 'text:style-name', 'T1'):
+                    t = '*' + t + '*'
+                elif self.hasAttributeWithValue(n, 'text:style-name', 'T2'):
+                    t = '**' + t + '**'
+                elif self.hasAttributeWithValue(n, 'text:style-name', 'T3'):
+                    t = '<u>' + t + '</u>'
+                else:   # ignore other styles
+                    pass
+            else:
+                t = self.getTextFromNode(n)
 
-        if t != None:
-            if self.currentScope == Scope.OUTLINE:
-                self.currentText += (' ' * self.currentDepth) + '- ' + t + "\n"
-            elif self.currentScope == Scope.TITLE:
+            if t is not None:
+                if self.currentSlide.text[:-1] != ' ':
+                    self.currentSlide.text += ' '
+                self.currentSlide.text += t
+
+    def handleListNode(self, node):
+        def _handleNodeRec(node, depth):
+            for n in node.childNodes:
+                if n.nodeName == 'text:list':
+                    self.currentSlide.text += ('    ' * depth)
+                    _handleNodeRec(n, depth + 1)
+                elif n.nodeName == 'text:list-item':
+                    self.currentSlide.text += '\n' + ('    ' * depth) + '- ' # space after hyphen is required
+                    _handleNodeRec(n, depth)
+                elif n.nodeName == 'text:p':
+                    self.handleTextNode(n)
+        _handleNodeRec(node, -1)
+
+    def handleTitle(self, node):
+        def _handleTitleRec(node):
+            t = self.getTextFromNode(node)
+            if t is not None:
                 self.currentSlide.title += t
-            elif self.currentScope == Scope.IMAGES:
-                pass
-                # print('image title ',t)
+            else:
+                self.currentSlide.title += ""  # There is a title and so probably a slide, but it is empty
+            for n in node.childNodes:
+                _handleTitleRec(n)
+            self.currentSlide.title += '\n'
 
-        for c in node.childNodes:
-            self.currentDepth += 1
-            self.handleNode(c)
-            self.currentDepth -= 1
-                
+        self.debugNode(node)
+        _handleTitleRec(node)
+
+    def handleOutline(self, node):
+        self.debugNode(node)
+
+        for n in node.childNodes:
+            self.debugNode(n)
+            self.handleListNode(n)
+
+    def handleSlide(self, page):
+        self.currentSlide.name = page.attributes['draw:name']
+        for item in page.childNodes:
+            self.debugNode(item)
+            if self.hasAttributeWithValue(item, 'presentation:class', 'title'):
+                self.handleTitle(item)
+            elif self.hasAttributeWithValue(item, 'presentation:class', 'outline'):
+                self.currentDepth = 0
+                self.handleOutline(item)
+            elif item.nodeName == 'draw:frame':
+                for n in item.childNodes:
+                    if n.nodeName in ['draw:image', 'draw:plugin']:
+                        self.handleImage(n)
 
     def handleDocument(self,dom):
         # we only need the pages
-        pages = dom.getElementsByTagName("draw:page")
+        pages = dom.getElementsByTagName('draw:page')
         # iterate pages
         for page in pages:
-
-            self.currentDepth = 0
+            self.debugNode(page)
             self.currentSlide = Slide()
-            self.handleNode(page)
-            self.currentSlide.text = self.currentText
+            self.handleSlide(page)
             self.slides.append(self.currentSlide)
-
-            self.currentText = ""
-
 
     def open(self,fname,mediaDir='media',markdown = False,mediaExtraction = False):
         
@@ -209,7 +244,7 @@ class Parser:
                                 os.makedirs(self.mediaDirectory)
                             os.rename(os.path.join('.',m),v)
                         except KeyError:
-                            print("error finding media file ",m)
+                            print('error finding media file ',m)
                         
 
 
@@ -221,11 +256,11 @@ def main(argv=None):
 
     argument_parser = argparse.ArgumentParser(description='OpenDocument Presentation converter')
     
-    argument_parser.add_argument("-i","--input", required=True,help="ODP file to parse and extract")
-    argument_parser.add_argument("-m","--markdown", help="generate Markdown files", action='store_true')
-    argument_parser.add_argument("-b","--blocks", help="generate pandoc blocks for video files", action='store_true')
-    argument_parser.add_argument("-x","--extract", help="extract media files", action='store_true')
-    argument_parser.add_argument("--mediadir", required=False,default='media',help="output directory for linked media")
+    argument_parser.add_argument('-i','--input', required=True,help='ODP file to parse and extract')
+    argument_parser.add_argument('-m','--markdown', help='generate Markdown files', action='store_true')
+    argument_parser.add_argument('-b','--blocks', help='generate pandoc blocks for video files', action='store_true')
+    argument_parser.add_argument('-x','--extract', help='extract media files', action='store_true')
+    argument_parser.add_argument('--mediadir', required=False,default='media',help='output directory for linked media')
     
     args = argument_parser.parse_args()
 
