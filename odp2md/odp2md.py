@@ -4,6 +4,7 @@
 
 2023-09-02 Modified by Rubén Béjar
     - Added support for bold, italic and underline text styles
+    - For other changes after this, see the commit messages on GitHub...
 
 odp2md 2021.5.0
 
