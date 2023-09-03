@@ -146,16 +146,18 @@ class Parser:
 
     def handleTextNode(self, node):
         for n in node.childNodes:
+            t = None
             if n.nodeName == 'text:span':
-                t = self.getTextFromNode(n.childNodes[0])
-                if self.hasAttributeWithValue(n, 'text:style-name', 'T1'):
-                    t = '*' + t + '*'
-                elif self.hasAttributeWithValue(n, 'text:style-name', 'T2'):
-                    t = '**' + t + '**'
-                elif self.hasAttributeWithValue(n, 'text:style-name', 'T3'):
-                    t = '<u>' + t + '</u>'
-                else:   # ignore other styles
-                    pass
+                if len(n.childNodes) > 0:
+                    t = self.getTextFromNode(n.childNodes[0])
+                    if self.hasAttributeWithValue(n, 'text:style-name', 'T1'):
+                        t = '*' + t + '*'
+                    elif self.hasAttributeWithValue(n, 'text:style-name', 'T2'):
+                        t = '**' + t + '**'
+                    elif self.hasAttributeWithValue(n, 'text:style-name', 'T3'):
+                        t = '<u>' + t + '</u>'
+                    else:   # ignore other styles
+                        pass
             else:
                 t = self.getTextFromNode(n)
 
@@ -185,17 +187,20 @@ class Parser:
 
     def handleTitle(self, node):
         def _handleTitleRec(node):
+            t = None
             if node.nodeName == 'text:span':
-                t = self.getTextFromNode(node.childNodes[0])
-                if self.hasAttributeWithValue(node, 'text:style-name', 'T1'):
-                    t = '*' + t + '*'
-                elif self.hasAttributeWithValue(node, 'text:style-name', 'T2'):
-                    t = '**' + t + '**'
-                elif self.hasAttributeWithValue(node, 'text:style-name', 'T3'):
-                    t = '<u>' + t + '</u>'
-                else:  # ignore other styles
-                    pass
-                self.currentSlide.title += t
+                if len(node.childNodes) > 0:
+                    t = self.getTextFromNode(node.childNodes[0])
+                    if self.hasAttributeWithValue(node, 'text:style-name', 'T1'):
+                        t = '*' + t + '*'
+                    elif self.hasAttributeWithValue(node, 'text:style-name', 'T2'):
+                        t = '**' + t + '**'
+                    elif self.hasAttributeWithValue(node, 'text:style-name', 'T3'):
+                        t = '<u>' + t + '</u>'
+                    else:  # ignore other styles
+                        pass
+                    if t is not None:
+                        self.currentSlide.title += t
             else:
                 t = self.getTextFromNode(node)
                 if t is None:
