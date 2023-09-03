@@ -89,6 +89,7 @@ class Parser:
         self.mediaDirectory = 'media'
         self.hiddenPageStyles = set()
         self.debug = False
+        self.basename = ''  # File base name. It is filled when we open the file
 
     def getTextFromNode(self,node):
         if node.nodeType == node.TEXT_NODE and len(str(node.data)) > 0:
@@ -133,9 +134,12 @@ class Parser:
                 # now we create a new slug name for conversion
                 slug = self.slugify(self.currentSlide.title)
                 if len(slug) < 1:
-                    slug = 'slide-' + str(len(self.slides)) + '-image'
+                    slug = 'p' + str(len(self.slides))
+                # To make it safer (but not completely safe) to have media from different presentations in the same
+                # folder without name collisions, we add the original presentation file basename
+                slug = self.basename + '-' + slug
                 slug += '-' + str(len(self.currentSlide.media))
-                slug = (slug[:128]) if len(slug) > 128 else slug  # truncate
+                slug = (slug[:255]) if len(slug) > 255 else slug  # truncate (to 255 chars)
                 self.currentSlide.media.append((v, os.path.join(self.mediaDirectory, slug + ext)))
 
 
@@ -237,7 +241,7 @@ class Parser:
                 self.currentSlide.text is not None and self.currentSlide.text != "" and \
                 len(self.currentSlide.media) == 0:
             self.currentSlide.title = self.currentSlide.text
-            self.currentSlide.text = ""
+
 
     def handleDocument(self,dom):
         # We need the styles to find out if some slides are not visible (we might not want to export them)
@@ -256,7 +260,15 @@ class Parser:
             if not page.attributes['draw:style-name'].value in self.hiddenPageStyles:
                 self.currentSlide = Slide()
                 self.handleSlide(page)
-                self.slides.append(self.currentSlide)
+                # If a slide only has a title and it is not the "title" slide, we will remove it.
+                # I can imagine situations when keeping it would be the right choice (TODO: parameterize
+                #  this?) but for now it seems the sensible default.
+                if (self.currentSlide.text is None or self.currentSlide.text == "") and \
+                   (self.currentSlide.notes is None or self.currentSlide.notes == "") and \
+                   len(self.currentSlide.media) == 0 and self.currentSlide.titleLevel > 1:
+                    pass
+                else:
+                    self.slides.append(self.currentSlide)
 
     def createATitleSlide(self, fname):
         slide_0 = Slide()
@@ -268,6 +280,7 @@ class Parser:
     def open(self,fname,mediaDir='media',markdown = False,mediaExtraction = False):
         
         self.mediaDirectory = mediaDir
+        self.basename = (os.path.basename(fname))
 
         # We create a "title slide" with the name of the file.
         # This allows for having a level 1 title in the document, which is useful for having a TOC in mkdocs
