@@ -47,11 +47,12 @@ class Slide:
         self.text = ''
         self.notes = ''
         self.media = []
+        self.titleLevel = 2 # by default 2; for the first one this will be 1
 
     def generateMarkdown(self,blockToHTML=True):
         # fix identation
         self.text = textwrap.dedent(self.text)
-        out = '## {0}\n\n{1}\n'.format(self.title,self.text)
+        out = ('#' * self.titleLevel) + ' {0}\n\n{1}\n'.format(self.title,self.text)
         for m,v in self.media:
 
             # maybe let everything else fail?
@@ -257,9 +258,20 @@ class Parser:
                 self.handleSlide(page)
                 self.slides.append(self.currentSlide)
 
+    def createATitleSlide(self, fname):
+        slide_0 = Slide()
+        slide_0.title = fname
+        slide_0.titleLevel = 1
+        self.slides.append(slide_0)
+
+
     def open(self,fname,mediaDir='media',markdown = False,mediaExtraction = False):
         
         self.mediaDirectory = mediaDir
+
+        # We create a "title slide" with the name of the file.
+        # This allows for having a level 1 title in the document, which is useful for having a TOC in mkdocs
+        self.createATitleSlide(os.path.basename(fname))
 
         # open odp file
         with zipfile.ZipFile(fname) as odp:
