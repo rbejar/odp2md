@@ -159,17 +159,23 @@ class Parser:
                 self.currentSlide.text += t
 
     def handleListNode(self, node):
-        def _handleNodeRec(node, depth):
+        def _handleListNodeRec(node, depth):
             for n in node.childNodes:
                 if n.nodeName == 'text:list':
                     self.currentSlide.text += ('    ' * depth)
-                    _handleNodeRec(n, depth + 1)
+                    _handleListNodeRec(n, depth + 1)
                 elif n.nodeName == 'text:list-item':
                     self.currentSlide.text += '\n' + ('    ' * depth) + '- ' # space after hyphen is required
-                    _handleNodeRec(n, depth)
+                    _handleListNodeRec(n, depth)
                 elif n.nodeName == 'text:p':
                     self.handleTextNode(n)
-        _handleNodeRec(node, -1)
+                elif n.nodeName == 'text:list-header':
+                    _handleListNodeRec(n, depth)
+        _handleListNodeRec(node, -1)
+
+    def handleTextBox(self, node):
+        for n in node.childNodes:
+            self.handleTextNode(n)
 
     def handleTitle(self, node):
         def _handleTitleRec(node):
@@ -214,6 +220,23 @@ class Parser:
                 for n in item.childNodes:
                     if n.nodeName in ['draw:image', 'draw:plugin']:
                         self.handleImage(n)
+                    elif n.nodeName == 'draw:text-box':
+                        self.handleTextBox(n)
+            elif item.nodeName == 'draw:custom-shape':
+                if item.childNodes[0].nodeName == 'text:list':
+                    self.handleListNode(item)
+                elif item.childNodes[0].nodeName == 'draw:text-box':
+                    self.handleTextBox(item)
+                else:
+                    self.handleTextNode(item)
+        # If a slide does not have a title, but it has a text and it does not have media, then we use
+        # that as the title. If it had media, the text is probably some kind of caption/explanation.
+        # TODO: this seems as a reasonable default, but it probably should be a command-line switch
+        if (self.currentSlide.title is None or self.currentSlide.title == "") and \
+                self.currentSlide.text is not None and self.currentSlide.text != "" and \
+                len(self.currentSlide.media) == 0:
+            self.currentSlide.title = self.currentSlide.text
+            self.currentSlide.text = ""
 
     def handleDocument(self,dom):
         # We need the styles to find out if some slides are not visible (we might not want to export them)
@@ -228,7 +251,7 @@ class Parser:
         # iterate pages
         for page in pages:
             self.debugNode(page)
-            # we skip hidden pages (TODO: cli switch parameter for this?)
+            # we skip hidden pages (TODO: command-line switch for this?)
             if not page.attributes['draw:style-name'].value in self.hiddenPageStyles:
                 self.currentSlide = Slide()
                 self.handleSlide(page)
