@@ -86,6 +86,7 @@ class Parser:
         self.currentDepth = 0
         self.currentScope = Scope.NONE
         self.mediaDirectory = 'media'
+        self.hiddenPageStyles = set()
         self.debug = False
 
     def getTextFromNode(self,node):
@@ -215,14 +216,23 @@ class Parser:
                         self.handleImage(n)
 
     def handleDocument(self,dom):
-        # we only need the pages
+        # We need the styles to find out if some slides are not visible (we might not want to export them)
+        styles = dom.getElementsByTagName('style:style')
+        for s in styles:
+            style_name = s.attributes['style:name'].value
+            for ss in s.childNodes:
+                if self.hasAttributeWithValue(ss, 'presentation:visibility', 'hidden'):
+                    self.hiddenPageStyles.add(style_name)
+        # Pages
         pages = dom.getElementsByTagName('draw:page')
         # iterate pages
         for page in pages:
             self.debugNode(page)
-            self.currentSlide = Slide()
-            self.handleSlide(page)
-            self.slides.append(self.currentSlide)
+            # we skip hidden pages (TODO: cli switch parameter for this?)
+            if not page.attributes['draw:style-name'].value in self.hiddenPageStyles:
+                self.currentSlide = Slide()
+                self.handleSlide(page)
+                self.slides.append(self.currentSlide)
 
     def open(self,fname,mediaDir='media',markdown = False,mediaExtraction = False):
         
@@ -263,7 +273,8 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
 
-    argument_parser = argparse.ArgumentParser(description='OpenDocument Presentation converter')
+    argument_parser = argparse.ArgumentParser(description='OpenDocument Presentation converter',
+                                              epilog='It will not output hidden slides.')
     
     argument_parser.add_argument('-i','--input', required=True,help='ODP file to parse and extract')
     argument_parser.add_argument('-m','--markdown', help='generate Markdown files', action='store_true')
