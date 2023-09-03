@@ -90,7 +90,7 @@ class Parser:
         self.mediaDirectory = 'media'
         self.hiddenPageStyles = set()
         self.debug = False
-        self.basename = ''  # File base name. It is filled when we open the file
+        self.basename = ''  # File base name (without extension). It is filled when we open the file
 
     def getTextFromNode(self,node):
         if node.nodeType == node.TEXT_NODE and len(str(node.data)) > 0:
@@ -276,9 +276,9 @@ class Parser:
                 else:
                     self.slides.append(self.currentSlide)
 
-    def createATitleSlide(self, fname):
+    def createATitleSlide(self):
         slide_0 = Slide()
-        slide_0.title = fname
+        slide_0.title = self.basename
         slide_0.titleLevel = 1
         self.slides.append(slide_0)
 
@@ -286,11 +286,11 @@ class Parser:
     def open(self,fname,mediaDir='media',markdown = False,mediaExtraction = False):
         
         self.mediaDirectory = mediaDir
-        self.basename = (os.path.basename(fname))
+        self.basename = os.path.splitext(os.path.basename(fname))[0]
 
         # We create a "title slide" with the name of the file.
         # This allows for having a level 1 title in the document, which is useful for having a TOC in mkdocs
-        self.createATitleSlide(os.path.basename(fname))
+        self.createATitleSlide()
 
         # open odp file
         with zipfile.ZipFile(fname) as odp:
