@@ -15,8 +15,8 @@ def main():
 
     args = argument_parser.parse_args()
 
-    odp_parser = OdpParser()
     if 'input' in args:
+        odp_parser = OdpParser()
         odp_parser.open(args.input, args.mediadir, args.markdown, args.extract)
     else:
         argument_parser.print_help()

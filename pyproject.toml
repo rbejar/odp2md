@@ -9,7 +9,10 @@ name = "odpmkd"
 dynamic = ["version"]
 
 [tool.setuptools.dynamic]
+# TODO: Find out how to keep a proper dev versioning with autoincrements
 version = {attr = "odpmkd.VERSION"}
 
 [project.scripts]
+# TODO: Calling the script as odpmkd works, but it does not print help if there are not
+# any arguments. I don't know where the problem is.
 odpmkd = "odpmkd:__main__.main"
