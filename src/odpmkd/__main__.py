@@ -1,4 +1,4 @@
-from .odp_markdown import *
+from .odpmkd import *
 import argparse
 import sys
 
@@ -7,7 +7,7 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
 
-    argument_parser = argparse.ArgumentParser(prog='odp-markdown',
+    argument_parser = argparse.ArgumentParser(prog='odpmkd',
                                               description='OpenDocument Presentation converter',
                                               epilog='It will not output hidden slides.')
 

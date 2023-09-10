@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 '''
-odp_markdown
+odpmkd
 (c) Copyright 2023- Rubén Béjar
 
 =========================================================

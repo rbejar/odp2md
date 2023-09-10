@@ -1,6 +1,13 @@
 [build-system]
 requires = [
-    "setuptools>=42",
+    "setuptools>=61.0.0",
     "wheel"
 ]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "odpmkd"
+version = "0.0.1"
+
+[project.scripts]
+odpmkd = "odpmkd.__main__:main"
