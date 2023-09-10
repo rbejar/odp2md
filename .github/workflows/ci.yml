@@ -22,3 +22,9 @@ jobs:
       - name: Basic tests
         run: |
           python -m unittest discover -s tests -p 'tests_basic.py'
+      - name: Build package
+        # We are using setup.py because, AFAIK, is the only way o add a
+        # DEV tag to the version of the package (so it is clearly a development
+        # version, but we still can have incremental versioning)
+        run: |
+          python3 setup.py egg_info -bDEV bdist_wheel rotate -m.whl -k2
