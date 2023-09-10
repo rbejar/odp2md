@@ -1,18 +1,11 @@
 #!/usr/bin/env python3
 
 '''
+odp_markdown
+(c) Copyright 2023- Rubén Béjar
 
-2023-09-02 Modified by Rubén Béjar
-    - Added support for bold, italic and underline text styles
-    - For other changes after this, see the commit messages on GitHub...
-
-odp2md 2021.5.0
-
-ODP2Pandoc is a tiny tool to convert 
-OpenDocument formatted presentations (ODP) 
-to Pandocs' Markdown.
-
-(c) Copyright 2019-2021 Hartmut Seichter
+=========================================================
+Based on odp2md, (c) Copyright 2019-2021 Hartmut Seichter
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,21 +19,17 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-Usage:
-
-$> python odp2md --input <myslide.odp>
-
- '''
+=========================================================
+'''
 
 import os
 import zipfile
-import argparse
-import sys
-import re, unicodedata
+import re
+import unicodedata
 import textwrap
 from enum import Enum
 import xml.dom.minidom as dom
+
 
 class Slide:
     def __init__(self):
@@ -315,38 +304,6 @@ class Parser:
                             odp.extract(m,'.')
                             if not os.path.exists(self.mediaDirectory):
                                 os.makedirs(self.mediaDirectory)
-                            os.rename(os.path.join('.',m),v)
+                            os.rename(os.path.join('', m), v)
                         except KeyError:
                             print('error finding media file ',m)
-                        
-
-
-
-def main(argv=None):
-
-    if argv is None:
-        argv = sys.argv
-
-    argument_parser = argparse.ArgumentParser(description='OpenDocument Presentation converter',
-                                              epilog='It will not output hidden slides.')
-    
-    argument_parser.add_argument('-i','--input', required=True,help='ODP file to parse and extract')
-    argument_parser.add_argument('-m','--markdown', help='generate Markdown files', action='store_true')
-    argument_parser.add_argument('-b','--blocks', help='generate pandoc blocks for video files', action='store_true')
-    argument_parser.add_argument('-x','--extract', help='extract media files', action='store_true')
-    argument_parser.add_argument('--mediadir', required=False,default='media',help='output directory for linked media')
-    
-    args = argument_parser.parse_args()
-
-    # print(args)
-    # return
-
-    juicer = Parser()
-    if 'input' in args:
-        juicer.open(args.input,args.mediadir,args.markdown,args.extract)
-    else:
-        argument_parser.print_help()
-        return
-
-if __name__ == '__main__':
-    sys.exit(main(sys.argv))
