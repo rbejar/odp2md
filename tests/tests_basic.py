@@ -16,6 +16,6 @@ class MyTest(unittest.TestCase):
         self.output_dir = "/tmp"
 
     def test(self):
-        parser = Parser()
+        parser = OdpParser()
         parser.open(os.path.join(self.data_dir, "simple-000.odp"),
                     os.path.join(self.output_dir, "media"), True, True)

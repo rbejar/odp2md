@@ -12,4 +12,4 @@ dynamic = ["version"]
 version = {attr = "odpmkd.VERSION"}
 
 [project.scripts]
-odpmkd = "odpmkd.__main__:main"
+odpmkd = "odpmkd:__main__.main"

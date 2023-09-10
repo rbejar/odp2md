@@ -21,8 +21,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 =========================================================
 '''
-
+import argparse
 import os
+import sys
 import zipfile
 import re
 import unicodedata
@@ -68,7 +69,7 @@ class Scope(Enum):
     IMAGES = 4
 
 
-class Parser:
+class OdpParser:
 
     def __init__(self):
         self.slides = []

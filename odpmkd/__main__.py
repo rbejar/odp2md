@@ -1,12 +1,7 @@
 from .odpmkd import *
-import argparse
-import sys
 
 
-def main(argv=None):
-    if argv is None:
-        argv = sys.argv
-
+def main():
     argument_parser = argparse.ArgumentParser(prog='odpmkd',
                                               description='OpenDocument Presentation converter',
                                               epilog='It will not output hidden slides.')
@@ -20,15 +15,11 @@ def main(argv=None):
 
     args = argument_parser.parse_args()
 
-    # print(args)
-    # return
-
-    juicer = Parser()
+    odp_parser = OdpParser()
     if 'input' in args:
-        juicer.open(args.input, args.mediadir, args.markdown, args.extract)
+        odp_parser.open(args.input, args.mediadir, args.markdown, args.extract)
     else:
         argument_parser.print_help()
-        return
 
 
 if __name__ == '__main__':
