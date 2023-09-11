@@ -38,6 +38,6 @@ jobs:
       - uses: ncipollo/release-action@v1
         with:
           artifacts: "dist/*.whl"
-          commit: "main"
+          commit: "master"
           tag: v${{ steps.version.outputs.VERSION_TAG }}
 
