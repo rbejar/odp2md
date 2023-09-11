@@ -33,7 +33,7 @@ jobs:
           python setup.py egg_info -b "a`date '+%Y%m%d%H%M'`" bdist_wheel
       - name: Retrieve version
         run: |
-          find dist -name '*.whl' | awk -F"-" '{ print $2 }' >> $GITHUB_OUTPUT
+          echo "find dist -name '*.whl' | awk -F"-" '{ print $2 }'" >> $GITHUB_OUTPUT
         id: version
       - uses: ncipollo/release-action@v1
         with:
