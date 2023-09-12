@@ -69,6 +69,26 @@ class Scope(Enum):
     IMAGES = 4
 
 
+def get_hidden_page_styles(doc):
+    hidden_page_styles = set()
+    styles = doc.getElementsByTagName('style:style')
+    for s in styles:
+        style_name = s.attributes['style:name'].value
+        for ss in s.childNodes:
+            if has_attribute_with_value(ss, 'presentation:visibility', 'hidden'):                
+                hidden_page_styles.add(style_name)
+    return hidden_page_styles
+
+
+def has_attribute_with_value(node, name, value):
+    if node.attributes is None:
+        return False
+    for attribute_name,attribute_value in node.attributes.items():
+        if attribute_name == name and attribute_value == value:
+            return True
+    return False
+
+
 class OdpParser:
 
     def __init__(self):
@@ -86,14 +106,6 @@ class OdpParser:
         if node.nodeType == node.TEXT_NODE and len(str(node.data)) > 0:
             return node.data
         return None
-
-    def hasAttributeWithValue(self,node,name,value):
-        if node.attributes == None:
-            return False
-        for attribute_name,attribute_value in node.attributes.items():
-            if attribute_name == name and attribute_value == value:
-                return True
-        return False
 
     def debugNode(self,node):
         if self.debug:
@@ -140,11 +152,11 @@ class OdpParser:
             if n.nodeName == 'text:span':
                 if len(n.childNodes) > 0:
                     t = self.getTextFromNode(n.childNodes[0])
-                    if self.hasAttributeWithValue(n, 'text:style-name', 'T1'):
+                    if has_attribute_with_value(n, 'text:style-name', 'T1'):
                         t = '*' + t + '*'
-                    elif self.hasAttributeWithValue(n, 'text:style-name', 'T2'):
+                    elif has_attribute_with_value(n, 'text:style-name', 'T2'):
                         t = '**' + t + '**'
-                    elif self.hasAttributeWithValue(n, 'text:style-name', 'T3'):
+                    elif has_attribute_with_value(n, 'text:style-name', 'T3'):
                         t = '<u>' + t + '</u>'
                     else:   # ignore other styles
                         pass
@@ -181,11 +193,11 @@ class OdpParser:
             if node.nodeName == 'text:span':
                 if len(node.childNodes) > 0:
                     t = self.getTextFromNode(node.childNodes[0])
-                    if self.hasAttributeWithValue(node, 'text:style-name', 'T1'):
+                    if has_attribute_with_value(node, 'text:style-name', 'T1'):
                         t = '*' + t + '*'
-                    elif self.hasAttributeWithValue(node, 'text:style-name', 'T2'):
+                    elif has_attribute_with_value(node, 'text:style-name', 'T2'):
                         t = '**' + t + '**'
-                    elif self.hasAttributeWithValue(node, 'text:style-name', 'T3'):
+                    elif has_attribute_with_value(node, 'text:style-name', 'T3'):
                         t = '<u>' + t + '</u>'
                     else:  # ignore other styles
                         pass
@@ -212,9 +224,9 @@ class OdpParser:
         self.currentSlide.name = page.attributes['draw:name']
         for item in page.childNodes:
             self.debugNode(item)
-            if self.hasAttributeWithValue(item, 'presentation:class', 'title'):
+            if has_attribute_with_value(item, 'presentation:class', 'title'):
                 self.handleTitle(item)
-            elif self.hasAttributeWithValue(item, 'presentation:class', 'outline'):
+            elif has_attribute_with_value(item, 'presentation:class', 'outline'):
                 self.currentDepth = 0
                 self.handleOutline(item)
             elif item.nodeName == 'draw:frame':
@@ -238,17 +250,11 @@ class OdpParser:
                 len(self.currentSlide.media) == 0:
             self.currentSlide.title = self.currentSlide.text
 
-
-    def handleDocument(self,dom):
+    def handleDocument(self, doc):
         # We need the styles to find out if some slides are not visible (we might not want to export them)
-        styles = dom.getElementsByTagName('style:style')
-        for s in styles:
-            style_name = s.attributes['style:name'].value
-            for ss in s.childNodes:
-                if self.hasAttributeWithValue(ss, 'presentation:visibility', 'hidden'):
-                    self.hiddenPageStyles.add(style_name)
+        self.hiddenPageStyles = get_hidden_page_styles(doc)
         # Pages
-        pages = dom.getElementsByTagName('draw:page')
+        pages = doc.getElementsByTagName('draw:page')
         # iterate pages
         for page in pages:
             self.debugNode(page)
@@ -302,9 +308,30 @@ class OdpParser:
                 for slide in self.slides:
                     for m,v in slide.media:
                         try:
-                            odp.extract(m,'.')
+                            odp.extract(m, '.')
                             if not os.path.exists(self.mediaDirectory):
                                 os.makedirs(self.mediaDirectory)
                             os.rename(os.path.join('', m), v)
                         except KeyError:
                             print('error finding media file ',m)
+
+
+def main():
+    argument_parser = argparse.ArgumentParser(prog='odpmkd',
+                                              description='OpenDocument Presentation converter',
+                                              epilog='It will not output hidden slides.')
+
+    argument_parser.add_argument('-i', '--input', required=True, help='ODP file to parse and extract')
+    argument_parser.add_argument('-m', '--markdown', help='generate Markdown files', action='store_true')
+    argument_parser.add_argument('-b', '--blocks', help='generate pandoc blocks for video files', action='store_true')
+    argument_parser.add_argument('-x', '--extract', help='extract media files', action='store_true')
+    argument_parser.add_argument('--mediadir', required=False, default='media',
+                                 help='output directory for linked media')
+
+    args = argument_parser.parse_args()
+
+    if 'input' in args:
+        odp_parser = OdpParser()
+        odp_parser.open(args.input, args.mediadir, args.markdown, args.extract)
+    else:
+        argument_parser.print_help()
